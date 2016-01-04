@@ -1,20 +1,15 @@
 (ns ovation.launchpad.events
-  (:require [ovation.launchpad.utils :as utils]
-            [ovation.launchpad.grid :as grid]
-            [ovation.launchpad.led :as led]
-            [overtone.libs.event :as e]))
-
-(defn toggle-btn
-  [lp btn color]
-  (if (nil? (grid/get-btn lp btn))
-    (do
-      (led/btn-on lp btn color)
-      (grid/upd-btn! lp btn color))
-    (do
-      (led/btn-off lp btn)
-      (grid/upd-btn! lp btn nil))))
+  (:require [overtone.libs.event :as e]))
 
 (defmacro defevent
+  "A convenience wrapper for Overtone's MIDI event handlers. An ovation event
+  accepts a MIDI component as its sole argument that may or may not be passed
+  further. E.g.,
+  (defevent my-event [:midi :note-on]
+    [lp]
+    (fn [e]
+      (println \"Pressed note \" (:note e))
+      (do-some-stuff lp (:note e))))"
   [event-name event-vec & body]
   (let [doc (if (string? (first body)) (first body) nil)
         body* (if doc (rest body) body)
@@ -25,35 +20,14 @@
         :key (keyword '~event-name)
         :handler ~handler-f})))
 
-(defevent echo-led [:midi :note-on]
-  [lp color]
-  (fn [e]
-    (toggle-btn lp (utils/note->xy (:note e)) color)))
-
-(defevent echo-repl [:midi :note-on]
-  []
-  (fn [e]
-    (let [n (:note e)]
-      (prn (format "cell %s, midi %s" (utils/note->xy n) n)))))
-
-(defn handlers
-  [lp]
-  {:echo-repl (echo-repl)
-   :echo-led (echo-led lp :green)})
-
-;; All modes have one persistent event handler, :mode-nav, that provides
-;; switching between modes.
-(defn handlers-for-mode
-  [mode]
-  ({:session [:echo-repl :echo-led]
-    :user1 [:echo-repl]
-    :user2 [:echo-repl]
-    :mixer [:echo-led]} mode))
+(defn- handlers-for-mode
+  [lp mode]
+  (let [handlers (get-in lp [:config :modes mode :handlers])]
+    (mapv #(% lp) handlers)))
 
 (defn bind!
-  "Binds a seq of events to the Launchpad. Returns the Launchpad component."
-  [lp events]
-  (doseq [h (-> (handlers lp) (select-keys events) vals)]
+  [lp handlers]
+  (doseq [h handlers]
     (e/on-event (:event h) (:handler h) (:key h)))
   lp)
 
@@ -64,13 +38,19 @@
   lp)
 
 (defn unbind-all!
+  "Unbinds handlers for all the events except for mode navigation."
   [lp]
-  (unbind! lp (keys (handlers lp)))
+  (->> lp :config :modes vals
+       (map :handlers)
+       flatten set
+       (map #(:key (% lp)))
+       (unbind! lp))
   lp)
 
 (defn bind-for-mode!
+  "Binds the events specified in the Launchpad config."
   [lp mode]
   (do
     (unbind-all! lp)
-    (bind! lp (handlers-for-mode mode)))
+    (bind! lp (handlers-for-mode lp mode)))
   lp)

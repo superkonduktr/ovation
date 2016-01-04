@@ -3,9 +3,6 @@
             [ovation.launchpad.utils :as utils]
             [overtone.studio.midi :as midi]))
 
-(def all-colors
-  #{:low-red :red :full-red :low-amber :amber :orange :yellow :low-green :green})
-
 (defn grid-led-off
   "Turns off all the square buttons and the round ones on the right."
   [lp]

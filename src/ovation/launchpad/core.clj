@@ -1,19 +1,25 @@
-(ns ovation.launchpad
-  (:require [clojure.tools.logging :as log]
-            [com.stuartsierra.component :as component]
+(ns ovation.launchpad.core
+  (:require [com.stuartsierra.component :as component]
             [ovation.launchpad.events :as events]
             [ovation.launchpad.grid :as grid]
             [ovation.launchpad.led :as led]
-            [ovation.launchpad.mode :as mode]
             [ovation.launchpad.utils :as utils]
             [overtone.studio.midi :as midi]
             [overtone.libs.event :as e]))
 
-(defn init-state
+(defn- init-state
   [available-modes]
   (-> available-modes
       (zipmap (repeat {:grid grid/init-grid}))
       (assoc :mode nil)))
+
+(defn render-mode
+  "Renders given mode on the Launchpad receiver."
+  [lp mode]
+  (do
+    (led/control-led-off lp)
+    (led/control-led-on lp mode)
+    (led/upd-grid lp (grid/current-grid lp) (grid/grid-for-mode lp mode))))
 
 (defn set-mode!
   "Rebinds event handlers depending on the provided mode.
@@ -22,7 +28,7 @@
   (do
     (events/unbind-all! lp)
     (events/bind-for-mode! lp mode)
-    (mode/render-mode lp mode)
+    (render-mode lp mode)
     (swap! (:state lp) assoc :mode mode)
     lp))
 
@@ -46,7 +52,7 @@
                 :config config
                 :state (atom (init-state modes))}
             mode-nav (mode-nav lp config)]
-        (set-mode! lp (:default-mode config))
+        (set-mode! lp (:default-mode config (first modes)))
         (apply e/on-event ((juxt :event :handler :key) mode-nav))
         lp))))
 
@@ -60,5 +66,11 @@
     (events/unbind-all! this)
     this))
 
-(defn new-launchpad [config]
+(defn new-launchpad
+  "Accepts a config map that comprises the following:
+  :default-mode – a mode that the Launchpad will be switched upon component start;
+  :modes – a map with mode names as its keys and arbitrary mode configuration as its
+           values. The mode config must include :handlers key storing a collection
+           of event handlers to be bound for the mode (see o.l.events/defevent)."
+  [config]
   (map->Launchpad {:config config}))
