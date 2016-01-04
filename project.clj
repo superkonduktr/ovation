@@ -1,4 +1,4 @@
-(defproject ovation "0.1.1-SNAPSHOT"
+(defproject ovation "0.1.1"
   :description "Novation controllers interface for Overtone"
   :url "http://github.com/superkonduktr/ovation"
   :license {:name "Eclipse Public License"
