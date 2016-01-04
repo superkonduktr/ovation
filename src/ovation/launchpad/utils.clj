@@ -1,4 +1,5 @@
-(ns ovation.launchpad.utils)
+(ns ovation.launchpad.utils
+  (:require [clojure.set :refer [map-invert]]))
 
 (defn color->vel
   "Accepts a keyword for color among the following:
@@ -18,35 +19,32 @@
     :green 52
     (throw (IllegalArgumentException. (str "Unknown color keyword: " color)))))
 
+(def nav-controls
+  {:up 104
+   :down 105
+   :left 106
+   :right 107})
+
+(def mode-controls
+  {:session 108
+   :user1 109
+   :user2 110
+   :mixer 111})
+
+(def controls
+  (merge nav-controls mode-controls))
+
 (defn control->note
   "Accepts a keyword for control, among the following:
   :up, :down, :left, :right, :session, :user1, :user2, or :mixer.
   Returns a corresponding note on the Launchpad."
   [mode]
-  (case mode
-    :up 104
-    :down 105
-    :left 106
-    :right 107
-    :session 108
-    :user1 109
-    :user2 110
-    :mixer 111
-    nil))
+  (get controls mode))
 
 (defn note->control
   "Converts a note to a keyword for corresponding control."
-  [n]
-  (case n
-    104 :up
-    105 :down
-    106 :left
-    107 :right
-    108 :session
-    109 :user1
-    110 :user2
-    111 :mixer
-    (throw (IllegalArgumentException. (str "Illegal note value: " n)))))
+  [note]
+  (get (map-invert controls) note))
 
 (defn note->xy
   "Converts a note value (0-127) into a pair of coordinates on the

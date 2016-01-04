@@ -12,3 +12,4 @@ pom.xml.asc
 .idea_modules/
 /out/
 .DS_Store
+projectFilesBackup

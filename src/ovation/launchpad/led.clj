@@ -42,10 +42,12 @@
    (doseq [[xy c] (->> new-grid (filter (comp not nil? val)))]
      (btn-on lp xy c)))
   ([lp old-grid new-grid]
-   (let [changed-xy (->> (diff old-grid new-grid) first keys)]
-     (doseq [xy changed-xy]
-       (let [c (get new-grid xy)]
-         (if (nil? c) (btn-off lp xy) (btn-on lp xy c)))))))
+   (let [[old-xy new-xy] (->> (diff old-grid new-grid) (map keys))]
+     (doseq [xy old-xy]
+       (btn-off lp xy))
+     (doseq [xy new-xy]
+       (let [color (get new-grid xy)]
+         (if (nil? color) (btn-off lp xy) (btn-on lp xy color)))))))
 
 (defn control-led-on
   "Turns on a round control button in the top row.
